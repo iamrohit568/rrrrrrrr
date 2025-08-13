@@ -1,0 +1,53 @@
+.app {
+  max-width: 980px;
+  margin: 20px auto;
+  font-family: Arial, sans-serif;
+  color: #222;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.controls input {
+  flex: 1;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.controls button {
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.results table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.results th,
+.results td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.results th {
+  background: #f8f8f8;
+}
+
+.filters {
+  margin-top: 12px;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #eee;
+  background: #fafafa;
+}
+
+.error {
+  color: #b00020;
+  margin: 8px 0;
+}
