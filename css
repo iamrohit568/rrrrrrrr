@@ -1,53 +1,69 @@
-.app {
-  max-width: 980px;
-  margin: 20px auto;
+body {
   font-family: Arial, sans-serif;
-  color: #222;
+  margin: 16px;
+  background: #f7f7f7;
 }
 
-.controls {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+.app-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.controls input {
-  flex: 1;
+.controls label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.controls input[type="text"] {
+  width: 100%;
   padding: 8px;
-  font-size: 14px;
+  margin-top: 6px;
+  box-sizing: border-box;
 }
 
-.controls button {
+.buttons {
+  margin-top: 6px;
+}
+
+button {
   padding: 8px 12px;
-  font-size: 14px;
+  margin-right: 8px;
+  cursor: pointer;
 }
 
-.results table {
+.results {
+  margin-top: 20px;
+}
+
+.json-box {
+  background: #f3f3f3;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  max-height: 220px;
+}
+
+.items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
-.results th,
-.results td {
-  border: 1px solid #ddd;
+.items-table th,
+.items-table td {
   padding: 8px;
+  border: 1px solid #ddd;
   text-align: left;
 }
 
-.results th {
-  background: #f8f8f8;
-}
-
-.filters {
-  margin-top: 12px;
-  margin-bottom: 10px;
-  padding: 8px;
-  border: 1px solid #eee;
-  background: #fafafa;
-}
-
 .error {
-  color: #b00020;
+  color: white;
+  background: #d9534f;
+  padding: 8px;
+  border-radius: 4px;
   margin: 8px 0;
 }
