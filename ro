@@ -1,221 +1,215 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ITEMS } from "./ITEMS";
 import "./App.css";
 
 function normalizeDifyResponse(rawResp) {
-// rawResp might be { data: { carrierNames:[], subCategories:[], planTypes:[] } }
-// or { data: { subCategory: [...], planType: [...], carrierName: [...], carriers: [...] } } as in original sample
-if (!rawResp) return { planTypes: [], carrierNames: [], subCategories: [] };
+  // rawResp might be { data: { carrierNames:[], subCategories:[], planTypes:[] } }
+  // or { data: { subCategory: [...], planType: [...], carrierName: [...], carriers: [...] } } as in original sample
+  if (!rawResp) return { planTypes: [], carrierNames: [], subCategories: [] };
 
-const data = rawResp.data || rawResp;
+  const data = rawResp.data || rawResp;
 
-// Prefer known key names, be tolerant of casing
-const planTypes =
-data.planTypes ||
-data.planType ||
-data.plan_type ||
-data.planTypesList ||
-[];
-const carrierNames =
-data.carrierNames ||
-data.carrierName ||
-data.carrier_names ||
-data.carriers?.map((c) => c.carrierName).filter(Boolean) ||
-[];
-const subCategories =
-data.subCategories ||
-data.subCategory ||
-data.sub_categories ||
-data.sub_cat ||
-[];
+  // Prefer known key names, be tolerant of casing
+  const planTypes =
+    data.planTypes ||
+    data.planType ||
+    data.plan_type ||
+    data.planTypesList ||
+    [];
+  const carrierNames =
+    data.carrierNames ||
+    data.carrierName ||
+    data.carrier_names ||
+    data.carriers?.map((c) => c.carrierName).filter(Boolean) ||
+    [];
+  const subCategories =
+    data.subCategories ||
+    data.subCategory ||
+    data.sub_categories ||
+    data.sub_cat ||
+    [];
 
-// Ensure arrays and lowercase for matching
-return {
-planTypes: Array.isArray(planTypes) ? planTypes.map(String) : [],
-carrierNames: Array.isArray(carrierNames)
-? carrierNames.map(String)
-: [],
-subCategories: Array.isArray(subCategories)
-? subCategories.map(String)
-: [],
-};
+  // Ensure arrays and lowercase for matching
+  return {
+    planTypes: Array.isArray(planTypes) ? planTypes.map(String) : [],
+    carrierNames: Array.isArray(carrierNames)
+      ? carrierNames.map(String)
+      : [],
+    subCategories: Array.isArray(subCategories)
+      ? subCategories.map(String)
+      : [],
+  };
 }
 
 function applyFilters(items, filters) {
-let out = items.slice();
+  let out = items.slice();
 
-const { planTypes, carrierNames, subCategories } = filters;
+  const { planTypes, carrierNames, subCategories } = filters;
 
-if (planTypes && planTypes.length > 0) {
-const setPT = new Set(planTypes.map((p) => String(p).toLowerCase()));
-out = out.filter((it) =>
-it.planType ? setPT.has(String(it.planType).toLowerCase()) : false
-);
-}
+  if (planTypes && planTypes.length > 0) {
+    const setPT = new Set(planTypes.map((p) => String(p).toLowerCase()));
+    out = out.filter((it) =>
+      it.planType ? setPT.has(String(it.planType).toLowerCase()) : false
+    );
+  }
 
-if (carrierNames && carrierNames.length > 0) {
-const lowered = carrierNames.map((c) => String(c).toLowerCase());
-out = out.filter((it) => {
-const name = (it.carrierName || "").toLowerCase();
-return lowered.some((candidate) => name.includes(candidate));
-});
-}
+  if (carrierNames && carrierNames.length > 0) {
+    const lowered = carrierNames.map((c) => String(c).toLowerCase());
+    out = out.filter((it) => {
+      const name = (it.carrierName || "").toLowerCase();
+      return lowered.some((candidate) => name.includes(candidate));
+    });
+  }
 
-if (subCategories && subCategories.length > 0) {
-const lowered = subCategories.map((s) => String(s).toLowerCase());
-out = out.filter((it) => {
-const sc = (it.subCategory || "").toLowerCase();
-return lowered.some((candidate) => sc.includes(candidate));
-});
-}
+  if (subCategories && subCategories.length > 0) {
+    const lowered = subCategories.map((s) => String(s).toLowerCase());
+    out = out.filter((it) => {
+      const sc = (it.subCategory || "").toLowerCase();
+      return lowered.some((candidate) => sc.includes(candidate));
+    });
+  }
 
-return out;
+  return out;
 }
 
 export default function App() {
-const [searchText, setSearchText] = useState("");
-const [difyUrl, setDifyUrl] = useState(""); // e.g. https://api.dify.example.com
-const [loading, setLoading] = useState(false);
-const [difyResponse, setDifyResponse] = useState(null);
-const [filteredItems, setFilteredItems] = useState(ITEMS);
-const [error, setError] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [difyUrl, setDifyUrl] = useState(""); // e.g. https://api.dify.example.com
+  const [loading, setLoading] = useState(false);
+  const [difyResponse, setDifyResponse] = useState(null);
+  const [filteredItems, setFilteredItems] = useState(ITEMS);
+  const [error, setError] = useState(null);
 
-async function doSearch() {
-setError(null);
-setLoading(true);
-setDifyResponse(null);
-const payload = {
-  search_query: searchText,
-  data: ITEMS,
-};
+  async function doSearch() {
+    setError(null);
+    setLoading(true);
+    setDifyResponse(null);
 
-try {
-  let respJson;
-  if (difyUrl && difyUrl.trim() !== "") {
-    // If user gave a base URL, we attempt to POST to `${difyUrl}/quote-plan-filter`
-    const url =
-      difyUrl.endsWith("/quote-plan-filter") ||
-      difyUrl.endsWith("/quote-plan-filters")
-        ? difyUrl
-        : difyUrl.replace(/\/+$/, "") + "/quote-plan-filter";
-
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!resp.ok) {
-      throw new Error(`Dify call failed: ${resp.status} ${resp.statusText}`);
-    }
-    respJson = await resp.json();
-  } else {
-    // Mocked response (so you can test without Dify)
-    // Example of the simplified mock you described:
-    respJson = {
-      data: {
-        carrierNames: [],
-        subCategories: [],
-        planTypes: [],
-      },
-      success: true,
+    const payload = {
+      search_query: searchText,
+      data: ITEMS,
     };
+
+    try {
+      let respJson;
+      if (difyUrl && difyUrl.trim() !== "") {
+        // If user gave a base URL, we attempt to POST to `${difyUrl}/quote-plan-filter`
+        const url =
+          difyUrl.endsWith("/quote-plan-filter") ||
+          difyUrl.endsWith("/quote-plan-filters")
+            ? difyUrl
+            : difyUrl.replace(/\/+$/, "") + "/quote-plan-filter";
+
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+          throw new Error(`Dify call failed: ${resp.status} ${resp.statusText}`);
+        }
+        respJson = await resp.json();
+      } else {
+        // Mocked response (so you can test without Dify)
+        // Example of the simplified mock you described:
+        respJson = {
+          data: {
+            carrierNames: ["Kaiser"],
+            subCategories: ["Medical"],
+            planTypes: ["HMO"],
+          },
+          success: true,
+        };
+
+      }
+
+      setDifyResponse(respJson);
+
+      const normalized = normalizeDifyResponse(respJson);
+      const result = applyFilters(ITEMS, normalized);
+      setFilteredItems(result);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setLoading(false);
+    }
   }
 
-  setDifyResponse(respJson);
+  function resetAll() {
+    setSearchText("");
+    setDifyResponse(null);
+    setFilteredItems(ITEMS);
+    setError(null);
+  }
 
-  const normalized = normalizeDifyResponse(respJson);
-  const result = applyFilters(ITEMS, normalized);
-  setFilteredItems(result);
-} catch (err) {
-  setError(String(err));
-} finally {
-  setLoading(false);
-}
-}
+  return (
+    <div className="app-container">
+      <h2>Smart Plan Search</h2>
 
-// Trigger search in real-time as the user types (debounced)
-useEffect(() => {
-const handle = setTimeout(() => {
-doSearch();
-}, 400);
-return () => clearTimeout(handle);
-// Intentionally only depend on searchText so search triggers when typing.
-// doSearch is re-created each render but using the latest closure is fine here.
-}, [searchText]);
+      <div className="controls">
+        {/* <label>
+          Dify API URL (optional):
+          <input
+            type="text"
+            placeholder="https://your-dify.example.com (will POST to /quote-plan-filter)"
+            value={difyUrl}
+            onChange={(e) => setDifyUrl(e.target.value)}
+          />
+        </label> */}
 
-function resetAll() {
-setSearchText("");
-setDifyResponse(null);
-setFilteredItems(ITEMS);
-setError(null);
-}
+        <label>
+          <input
+            type="text"
+            placeholder="Type your search_query..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+        </label>
 
-return (
-<div className="app-container">
-<h2>Smart Plan Search</h2>
-<div className="controls">
-    {/* <label>
-      Dify API URL (optional):
-      <input
-        type="text"
-        placeholder="https://your-dify.example.com (will POST to /quote-plan-filter)"
-        value={difyUrl}
-        onChange={(e) => setDifyUrl(e.target.value)}
-      />
-    </label> */}
+        <div className="buttons">
+          <button onClick={doSearch} disabled={loading}>
+            {loading ? "Searching..." : "Search (send to Dify)"}
+          </button>
+          <button onClick={resetAll}>Reset</button>
+        </div>
+      </div>
 
-    <label>
-      <input
-        type="text"
-        placeholder="Type your search_query..."
-        value={searchText}
-        onChange={(e) => setSearchText(e.target.value)}
-      />
-    </label>
-
-    <div className="buttons">
-      {/* Real-time search: buttons removed */}
+      <div className="results">
+        <h3>Filtered Benefit Plans ({filteredItems.length})</h3>
+        <table className="items-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Carrier</th>
+              <th>Plan Type</th>
+              <th>SubCategory</th>
+              <th>Renewal</th>
+              <th>Sequoia Product</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.map((it) => (
+              <tr key={it.id}>
+                <td>{it.id}</td>
+                <td>{it.name}</td>
+                <td>{it.carrierName}</td>
+                <td>{it.planType}</td>
+                <td>{it.subCategory}</td>
+                <td>{it.renewalStatus}</td>
+                <td>{it.sequoiaProduct}</td>
+              </tr>
+            ))}
+            {filteredItems.length === 0 && (
+              <tr>
+                <td colSpan="7" style={{ textAlign: "center" }}>
+                  No plans match the filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-
-  <div className="results">
-    <h3>Filtered Benefit Plans ({filteredItems.length})</h3>
-    {loading && <div>Searching...</div>}
-    {error && <div style={{ color: "red" }}>{error}</div>}
-    <table className="items-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Carrier</th>
-          <th>Plan Type</th>
-          <th>SubCategory</th>
-          <th>Renewal</th>
-          <th>Sequoia Product</th>
-        </tr>
-      </thead>
-      <tbody>
-        {filteredItems.map((it) => (
-          <tr key={it.id}>
-            <td>{it.id}</td>
-            <td>{it.name}</td>
-            <td>{it.carrierName}</td>
-            <td>{it.planType}</td>
-            <td>{it.subCategory}</td>
-            <td>{it.renewalStatus}</td>
-            <td>{it.sequoiaProduct}</td>
-          </tr>
-        ))}
-        {filteredItems.length === 0 && (
-          <tr>
-            <td colSpan="7" style={{ textAlign: "center" }}>
-              No plans match the filters.
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-</div>
-);
+  );
 }
