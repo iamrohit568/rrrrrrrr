@@ -270,3 +270,84 @@ const Insights = () => {
 export default Insights;
 
 
+
+export const getInsightsChartOptions = () => {
+	const formatDollar = value =>
+		`$${value?.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+
+	const getDigitsCount = val => {
+		const stringVal = val?.toFixed(2) || `${val}`;
+		return stringVal.length;
+	};
+
+	const topValuePlugin = {
+		id: 'topValue',
+		afterDatasetsDraw(chart) {
+			const { ctx, data } = chart;
+			chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+				ctx.font = 'bold 12px';
+				const noOfDigits = getDigitsCount(data.datasets[0].data[index]);
+				const xCoordinate =
+					data.datasets[0].data[index] >= 0
+						? datapoint.x + 3
+						: datapoint.x - noOfDigits * 6;
+				ctx.fillText(
+					formatDollar(data.datasets[0].data[index]),
+					xCoordinate,
+					datapoint.y + 4,
+				);
+			});
+		},
+	};
+
+	return {
+		barThickness: 'flex',
+		maxBarThickness: 30,
+		maintainAspectRatio: false,
+		scales: {
+			y: {
+				ticks: {
+					maxRotation: 45,
+					minRotation: 0,
+				},
+				title: {
+					display: true,
+					color: '#9c9c9c',
+					padding: 20,
+					font: {
+						size: 12,
+					},
+				},
+				grid: {
+					display: false,
+				},
+			},
+			x: {
+				ticks: {
+					callback: formatDollar,
+				},
+				border: {
+					display: false,
+				},
+			},
+		},
+		plugins: {
+			legend: {
+				display: false,
+			},
+			tooltip: {
+				callbacks: {
+					label: context => ` $${context.formattedValue}`,
+				},
+			},
+		},
+		layout: {
+			padding: {
+				right: 120,
+			},
+		},
+		indexAxis: 'y',
+		extPlugins: topValuePlugin,
+	};
+};
+
