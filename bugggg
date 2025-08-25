@@ -2,17 +2,12 @@ export const getInsightsChartOptions = () => {
 	const formatDollar = value =>
 		`$${value?.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
 
-	const getDigitsCount = val => {
-		const stringVal = val?.toFixed(2) || `${val}`;
-		return stringVal.length;
-	};
-
 	const topValuePlugin = {
 		id: 'topValue',
 		afterDatasetsDraw(chart) {
 			const { ctx, data, chartArea } = chart;
+			ctx.save(); // Save the current context state
 			ctx.font = 'bold 12px sans-serif';
-			ctx.textAlign = 'left';
 			ctx.textBaseline = 'middle';
 			ctx.fillStyle = '#000';
 			
@@ -21,26 +16,32 @@ export const getInsightsChartOptions = () => {
 				const formattedValue = formatDollar(value);
 				const textWidth = ctx.measureText(formattedValue).width;
 				
+				// Calculate positions based on actual text width
+				const PADDING = 8; // Consistent padding
+				
 				let xCoordinate;
+				let textAlign;
 				
 				if (value >= 0) {
-					// For positive values: position to the right of the bar with some padding
-					xCoordinate = datapoint.x + 8;
-					ctx.textAlign = 'left';
+					// For positive values: position to the right of the bar
+					xCoordinate = datapoint.x + PADDING;
+					textAlign = 'left';
 				} else {
-					// For negative values: position to the left of the bar with proper spacing
-					xCoordinate = datapoint.x - textWidth - 8;
-					ctx.textAlign = 'right';
+					// For negative values: position to the left of the bar
+					xCoordinate = datapoint.x - PADDING;
+					textAlign = 'right';
 					
 					// Ensure text doesn't go beyond the left edge of the chart area
-					if (xCoordinate < chartArea.left) {
-						xCoordinate = chartArea.left + 4;
-						ctx.textAlign = 'left';
+					if (xCoordinate - textWidth < chartArea.left) {
+						xCoordinate = chartArea.left + PADDING;
+						textAlign = 'left';
 					}
 				}
 				
+				ctx.textAlign = textAlign;
 				ctx.fillText(formattedValue, xCoordinate, datapoint.y);
 			});
+			ctx.restore(); // Restore the context state
 		},
 	};
 
@@ -73,8 +74,8 @@ export const getInsightsChartOptions = () => {
 				border: {
 					display: false,
 				},
-				// Add this to ensure negative values have enough space
-				suggestedMin: -1000, // Adjust based on your data range
+				// Add suggested min to ensure negative values have enough space
+				suggestedMin: -1000,
 			},
 		},
 		plugins: {
@@ -87,10 +88,10 @@ export const getInsightsChartOptions = () => {
 				},
 			},
 		},
-		// Increase right padding to accommodate negative values
+		// Increase padding on both sides to accommodate labels
 		layout: {
 			padding: {
-				left: 120, // Increased left padding for negative values
+				left: 120,
 				right: 120,
 			},
 		},
