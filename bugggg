@@ -1,0 +1,100 @@
+export const getInsightsChartOptions = () => {
+	const formatDollar = value =>
+		`$${value?.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+
+	const getDigitsCount = val => {
+		const stringVal = val?.toFixed(2) || `${val}`;
+		return stringVal.length;
+	};
+
+	const topValuePlugin = {
+		id: 'topValue',
+		afterDatasetsDraw(chart) {
+			const { ctx, data, chartArea } = chart;
+			ctx.font = 'bold 12px sans-serif';
+			ctx.textAlign = 'left';
+			ctx.textBaseline = 'middle';
+			ctx.fillStyle = '#000';
+			
+			chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+				const value = data.datasets[0].data[index];
+				const formattedValue = formatDollar(value);
+				const textWidth = ctx.measureText(formattedValue).width;
+				
+				let xCoordinate;
+				
+				if (value >= 0) {
+					// For positive values: position to the right of the bar with some padding
+					xCoordinate = datapoint.x + 8;
+					ctx.textAlign = 'left';
+				} else {
+					// For negative values: position to the left of the bar with proper spacing
+					xCoordinate = datapoint.x - textWidth - 8;
+					ctx.textAlign = 'right';
+					
+					// Ensure text doesn't go beyond the left edge of the chart area
+					if (xCoordinate < chartArea.left) {
+						xCoordinate = chartArea.left + 4;
+						ctx.textAlign = 'left';
+					}
+				}
+				
+				ctx.fillText(formattedValue, xCoordinate, datapoint.y);
+			});
+		},
+	};
+
+	return {
+		barThickness: 'flex',
+		maxBarThickness: 30,
+		maintainAspectRatio: false,
+		scales: {
+			y: {
+				ticks: {
+					maxRotation: 45,
+					minRotation: 0,
+				},
+				title: {
+					display: true,
+					color: '#9c9c9c',
+					padding: 20,
+					font: {
+						size: 12,
+					},
+				},
+				grid: {
+					display: false,
+				},
+			},
+			x: {
+				ticks: {
+					callback: formatDollar,
+				},
+				border: {
+					display: false,
+				},
+				// Add this to ensure negative values have enough space
+				suggestedMin: -1000, // Adjust based on your data range
+			},
+		},
+		plugins: {
+			legend: {
+				display: false,
+			},
+			tooltip: {
+				callbacks: {
+					label: context => ` $${context.formattedValue}`,
+				},
+			},
+		},
+		// Increase right padding to accommodate negative values
+		layout: {
+			padding: {
+				left: 120, // Increased left padding for negative values
+				right: 120,
+			},
+		},
+		indexAxis: 'y',
+		extPlugins: topValuePlugin,
+	};
+};
