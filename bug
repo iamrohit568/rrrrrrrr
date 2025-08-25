@@ -1,0 +1,272 @@
+import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+
+import { TitleSet } from 'eureka/beta/components';
+import { Container, PageLoader, HorizontalBarChart, NotFound } from 'host/components';
+
+import { useInsights } from '../../queries/useInsights';
+import { getInsightsChartOptions } from './consts';
+import { PP_UAM_PERMISSIONS_MAP } from '../consts';
+import { usePermissionContext } from 'host/hooks';
+
+const Insights = () => {
+	const { orgId, projectionId, workbookId } = useParams();
+	const { permissionObj = {} } = usePermissionContext();
+	const canViewInsights = permissionObj[PP_UAM_PERMISSIONS_MAP?.PP_PROJECTION_INSIGHTS_LIST];
+
+	const { data, isFetching } = useInsights({ orgId, projectionId, workbookId });
+
+	const chartData = useMemo(() => {
+    const labels = [];
+    const values = [];
+    const backgroundColor = [];
+
+    let minValue = 0;
+
+    data?.forEach(d => {
+        const label = d.key;
+        const value = d?.value?.amount;
+
+        labels.push(label);
+        values.push(value);
+        backgroundColor.push(
+            label === 'totalPepmCost' || label === 'Total PEPM Costs'
+                ? '#7B80C1'
+                : value < 0
+                    ? '#B9517D'
+                    : '#9297CE'
+        );
+
+        if (value < minValue) {
+            minValue = value;
+        }
+    });
+	
+    const roundDownToNextBuffer = (value, buffer) => {
+    return Math.floor((value - buffer) / buffer) * buffer;
+};
+
+const xMin = minValue < 0 ? roundDownToNextBuffer(minValue, 500) : 0;
+
+
+    return {
+        chart: {
+            labels,
+            datasets: [
+                {
+                    backgroundColor,
+                    data: values,
+                    barThickness: 25,
+                    borderRadius: 4,
+                    borderColor: '#fff',
+                },
+            ],
+        },
+        xMin,
+    };
+}, [data]);
+
+
+
+
+
+
+
+	if (!canViewInsights) {
+		return <NotFound type="accessDenied" />;
+	}
+
+	if (isFetching) {
+		return <PageLoader />;
+	}
+
+	return (
+		<div className="bg-white p-8">
+			<Container justify="space-between" m="0 0 32px">
+				<TitleSet title="Total Projected PEPM Cost Break Down" size="lg" nomargin />
+			</Container>
+			<div style={{ height: 400 }}>
+				<HorizontalBarChart
+    chartData={chartData.chart}
+    options={getInsightsChartOptions(chartData.xMin)}
+/>
+
+			</div>
+		</div>
+	);
+};
+
+export default Insights;
+
+
+
+
+
+
+
+export const getInsightsChartOptions = (xMin = 0) => {
+    const formatDollar = value =>
+        `$${value?.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
+
+    const getDigitsCount = val => {
+        const stringVal = val?.toFixed(2) || `${val}`;
+        return stringVal.length;
+    };
+
+    const topValuePlugin = {
+        id: 'topValue',
+        afterDatasetsDraw(chart) {
+            const { ctx, data } = chart;
+            chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+                ctx.font = 'bold 12px';
+                const noOfDigits = getDigitsCount(data.datasets[0].data[index]);
+                const xCoordinate =
+                    data.datasets[0].data[index] >= 0
+                        ? datapoint.x + 3
+                        : datapoint.x - noOfDigits * 6;
+                ctx.fillText(
+                    formatDollar(data.datasets[0].data[index]),
+                    xCoordinate,
+                    datapoint.y + 4,
+                );
+            });
+        },
+    };
+
+    return {
+        barThickness: 'flex',
+        maxBarThickness: 30,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 0,
+                },
+                title: {
+                    display: true,
+                    color: '#9c9c9c',
+                    padding: 20,
+                    font: {
+                        size: 12,
+                    },
+                },
+                grid: {
+                    display: false,
+                },
+            },
+            x: {
+                min: xMin,
+                ticks: {
+                    callback: formatDollar,
+                },
+                border: {
+                    display: false,
+                },
+            },
+        },
+        plugins: {
+            legend: {
+                display: false,
+            },
+            tooltip: {
+                callbacks: {
+                    label: context => ` $${context.formattedValue}`,
+                },
+            },
+        },
+        layout: {
+            padding: {
+                right: 120,
+            },
+        },
+        indexAxis: 'y',
+        extPlugins: topValuePlugin,
+    };
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import React, { useMemo } from 'react';
+import { useParams } from 'react-router-dom';
+
+import { TitleSet } from 'eureka/beta/components';
+import { Container, PageLoader, HorizontalBarChart, NotFound } from 'host/components';
+
+import { useInsights } from '../../queries/useInsights';
+import { getInsightsChartOptions } from './consts';
+import { PP_UAM_PERMISSIONS_MAP } from '../consts';
+import { usePermissionContext } from 'host/hooks';
+
+const Insights = () => {
+	const { orgId, projectionId, workbookId } = useParams();
+	const { permissionObj = {} } = usePermissionContext();
+	const canViewInsights = permissionObj[PP_UAM_PERMISSIONS_MAP?.PP_PROJECTION_INSIGHTS_LIST];
+
+	const { data, isFetching } = useInsights({ orgId, projectionId, workbookId });
+
+	const chartData = useMemo(() => {
+		const labels = data?.map(d => d.key);
+		const values = data?.map(d => d?.value?.amount);
+
+		const backgroundColor = labels?.map(label =>
+			label === 'totalPepmCost' || label === 'Total PEPM Costs'
+				? '#7B80C1'
+				: values[labels.indexOf(label)] < 0
+					? '#B9517D'
+					: '#9297CE',
+		);
+
+		return {
+			labels,
+			datasets: [
+				{
+					backgroundColor,
+					data: values,
+					barThickness: 25,
+					borderRadius: 4,
+					borderColor: '#fff',
+				},
+			],
+		};
+	}, [data]);
+
+	if (!canViewInsights) {
+		return <NotFound type="accessDenied" />;
+	}
+
+	if (isFetching) {
+		return <PageLoader />;
+	}
+
+	return (
+		<div className="bg-white p-8">
+			<Container justify="space-between" m="0 0 32px">
+				<TitleSet title="Total Projected PEPM Cost Break Down" size="lg" nomargin />
+			</Container>
+			<div style={{ height: 400 }}>
+				<HorizontalBarChart chartData={chartData} options={getInsightsChartOptions()} />
+			</div>
+		</div>
+	);
+};
+
+export default Insights;
+
+
